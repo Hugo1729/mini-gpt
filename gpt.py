@@ -102,3 +102,25 @@ class Block(nn.Module):
         X = X + self.mlp(Z)
 
         return X
+
+class GPT(nn.Module):
+    def __init__(self, n_embd, n_heads, block_sz, n_hidden, epsilon, n_tokens, n_blocks):
+        super().__init__()
+
+        self.embed = nn.Linear(n_tokens, n_embd)
+
+        self.blocks = [Block(n_embd, n_heads, block_sz, n_hidden, epsilon) for _ in range(n_blocks)]
+
+        self.unembed = nn.Linear(n_embd, n_tokens)
+
+    def forward(self, X):
+        X = self.embed(X)
+
+        #TODO positional encoding
+
+        for block in self.blocks:
+            X = block(X)
+
+        X = self.unembed(X)
+
+        return X
