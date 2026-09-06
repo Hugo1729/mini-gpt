@@ -3,11 +3,20 @@ from torch import nn
 import torch.nn.functional as F
 import numpy as np
 
-class MLP(nn.module):
-    def __init__(self):
-        super.__init__()
+class MLP(nn.Module):
+    def __init__(self, n_embd, n_hidden):
+        super().__init__()
 
-        #TODO
+        self.linear1 = nn.Linear(n_embd, n_hidden)
+        self.activation = nn.ReLU()
+        self.linear2 = nn.Linear(n_hidden, n_embd)
+
+    def forward(self, X):
+        X = self.linear1(X)
+        X = self.activation(X)
+        X = self.linear2(X)
+
+        return X
 
 
 #masked multi-head attention
