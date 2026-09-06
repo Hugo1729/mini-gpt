@@ -12,9 +12,9 @@ class MLP(nn.module):
 
 #masked multi-head attention
 #attention = scaled dot-product attention
-class CausalSelfAttention(nn.module):
+class CausalSelfAttention(nn.Module):
     def __init__(self, n_embd, n_heads, block_sz):
-        super.__init__()
+        super().__init__()
 
         assert n_embd % n_heads == 0
         self.n_embd = n_embd
@@ -43,7 +43,7 @@ class CausalSelfAttention(nn.module):
             z = z.view(batch_sz, seq_len, self.n_heads, head_sz)
             z = z.transpose(1,2)     # (batch_sz, n_heads, seq_len, head_sz)
 
-        attn = (q @ k.transpose(2,3)) / np.sqrt(head_sz)
+        attn = (q @ k.transpose(2,3)) / torch.sqrt(head_sz)
         attn = attn.masked_fill(self.mask[:seq_len,:seq_len], float('-inf'))
         attn = F.softmax(attn)    # (batch_sz, n_heads, seq_len, seq_len)
 
@@ -55,8 +55,23 @@ class CausalSelfAttention(nn.module):
         return self.o_linear(attn)
 
 
+class LayerNorm(nn.Module):
+    def __init__(self, epsilon, n_embd):
+        super().__init__()
 
+        self.epsilon = epsilon
 
+        self.gamma = nn.Parameter(torch.ones(n_embd))
+        self.beta = nn.Parameter(torch.zeros(n_embd))
 
+    def forward(self, X):
+        batch_sz, seq_len, n_embd = X.size()
+
+        mu = torch.mean(X, -1, keepdim=True)
+        var = torch.var(X, -1, keepdim=True, unbiased=False)
+
+        Z =  (X - mu) / torch.sqrt(var + self.epsilon)
+
+        return self.beta * Z + self.gamma
 
 
