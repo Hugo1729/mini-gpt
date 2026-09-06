@@ -8,7 +8,7 @@ class MLP(nn.Module):
         super().__init__()
 
         self.linear1 = nn.Linear(n_embd, n_hidden)
-        self.activation = nn.ReLU()
+        self.activation = nn.ELU()
         self.linear2 = nn.Linear(n_hidden, n_embd)
 
     def forward(self, X):
@@ -84,3 +84,21 @@ class LayerNorm(nn.Module):
         return self.beta * Z + self.gamma
 
 
+class Block(nn.Module):
+    def __init__(self, n_embd, n_heads, block_sz, n_hidden, epsilon):
+        super().__init__()
+
+        self.norm1 = LayerNorm(epsilon, n_embd)
+        self.attention = CausalSelfAttention(n_embd, n_heads, block_sz)
+
+        self.norm2 = LayerNorm(epsilon, n_embd)
+        self.mlp = MLP(n_embd, n_hidden)
+
+    def forward(self, X):
+        Z = self.norm1(X)
+        X = X + self.attention(Z)
+
+        Z = self.norm2(X)
+        X = X + self.mlp(Z)
+
+        return X
