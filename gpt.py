@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-import numpy as np
 
 class MLP(nn.Module):
     def __init__(self, n_embd, n_hidden):
@@ -102,6 +101,28 @@ class Block(nn.Module):
         X = X + self.mlp(Z)
 
         return X
+
+# Positional Encoding from Attention is all you need
+# code is not very optimal, but should be fine, since this all is precomputed anyways
+class PositionalEncoding(nn.Module):
+    def __init__(self, n_embd, block_sz):
+        PE = [[0.0 for _ in range(n_embd)] for __ in range(block_sz)]
+
+        for pos in range(block_sz):
+            for i in range(n_embd):
+                if (i%2 == 0):
+                    PE[pos][i] = torch.sin(pos/(10000**(i/n_embd)))
+                else:
+                    PE[pos][i]= torch.cos(pos/(10000**((i-1)/n_embd)))
+
+        self.PE = torch.tensor(PE)
+
+    def forward(self, X):
+        batch_sz, seq_len, n_embd = X.size()
+
+        PE = self.PE[:seq_len,:]
+
+        return PE.view(1, seq_len, n_embd)
 
 class GPT(nn.Module):
     def __init__(self, n_embd, n_heads, block_sz, n_hidden, epsilon, n_tokens, n_blocks):
