@@ -106,6 +106,8 @@ class Block(nn.Module):
 # code is not very optimal, but should be fine, since this all is precomputed anyways
 class PositionalEncoding(nn.Module):
     def __init__(self, n_embd, block_sz):
+        super().__init__()
+
         PE = [[0.0 for _ in range(n_embd)] for __ in range(block_sz)]
 
         for pos in range(block_sz):
@@ -115,7 +117,7 @@ class PositionalEncoding(nn.Module):
                 else:
                     PE[pos][i]= torch.cos(pos/(10000**((i-1)/n_embd)))
 
-        self.PE = torch.tensor(PE)
+        self.register_buffer("PE", torch.tensor(PE, dtype=torch.float32))
 
     def forward(self, X):
         batch_sz, seq_len, n_embd = X.size()
