@@ -60,7 +60,7 @@ class BPE:
     def train(self, text, num_tokens):
         data = text.encode("utf-8")
 
-        while (len(self.vocab) < num_tokens):
+        while (len(self.vocab) < num_tokens and len(data) > 1):
             cnts = get_cnts(data)
 
             token1, token2 = max(cnts, key = cnts.get)
@@ -73,8 +73,10 @@ class BPE:
             self.merges[(token1, token2)] = token3
 
     def encode(self, text):
-        data = text.encode("utf-8")
+        data = list(text.encode("utf-8"))
 
+        # as of python 3.7 this works well and guarantees iteration order,
+        # is the same as the order we as the order we added the items in
         for m, token3 in self.merges.items():
             token1, token2 = m
 
@@ -86,4 +88,29 @@ class BPE:
         text = b"".join([self.vocab[token] for token in tokens])
 
         return text.decode("utf-8", errors="replace")
+
+bpe = BPE()
+
+bpe.train(text, 300)
+
+print()
+print("######VOCAB######")
+print()
+
+for k, v in bpe.vocab.items():
+    print(k, "\"" + v.decode("utf-8", errors="replace") + "\"")
+
+print()
+print("######MERGES######")
+print()
+
+for k, v in bpe.merges.items():
+    print(k, v)
+
+print(bpe.decode(bpe.encode(text)))
+
+print()
+
+
+print(text == bpe.decode(bpe.encode(text)))
             
