@@ -28,8 +28,6 @@ BARNARDO Well, goodnight.
 If you do meet Horatio and Marcellus,
 The rivals of my watch, bid them make haste."""
 
-print([b for b in text.encode("utf-8")])
-print(5/0)
 
 def get_cnts(data):
     ans = {}
@@ -54,4 +52,38 @@ def merge(data, token1, token2, token3):
 
     return ans
 
+class BPE:
+    def __init__(self):
+        self.vocab = {i: bytes([i]) for i in range(256)}
+        self.merges = {}
+
+    def train(self, text, num_tokens):
+        data = text.encode("utf-8")
+
+        while (len(self.vocab) < num_tokens):
+            cnts = get_cnts(data)
+
+            token1, token2 = max(cnts, key = cnts.get)
+
+            token3 = len(self.vocab)
+
+            data = merge(data, token1, token2, token3)
+
+            self.vocab[token3] = self.vocab[token1] + self.vocab[token2]
+            self.merges[(token1, token2)] = token3
+
+    def encode(self, text):
+        data = text.encode("utf-8")
+
+        for m, token3 in self.merges.items():
+            token1, token2 = m
+
+            data = merge(data, token1, token2, token3)
+
+        return data
+
+    def decode(self, tokens):
+        text = b"".join([self.vocab[token] for token in tokens])
+
+        return text.decode("utf-8", errors="replace")
             
