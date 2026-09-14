@@ -130,20 +130,25 @@ class GPT(nn.Module):
     def __init__(self, n_embd, n_heads, block_sz, n_hidden, epsilon, n_tokens, n_blocks):
         super().__init__()
 
-        self.embed = nn.Linear(n_tokens, n_embd)
+        self.embed = nn.Embedding(n_tokens, n_embd)
 
-        self.blocks = [Block(n_embd, n_heads, block_sz, n_hidden, epsilon) for _ in range(n_blocks)]
+        self.pe = PositionalEncoding(n_embd, block_sz)
 
-        self.unembed = nn.Linear(n_embd, n_tokens)
+        self.blocks = nn.Modulelist(
+            [Block(n_embd, n_heads, block_sz, n_hidden, epsilon) for _ in range(n_blocks)]
+        )
+
+        self.ln = LayerNorm(epsilon, n_embd)
+
+        self.linear = nn.Linear(n_embd, n_tokens)
 
     def forward(self, X):
-        X = self.embed(X)
-
-        #TODO positional encoding
+        Z = self.embed(X)
+        Z += self.pe(Z)
 
         for block in self.blocks:
-            X = block(X)
+            Z = block(Z)
 
-        X = self.unembed(X)
+        Z = self.ln(Z)
 
-        return X
+        return self.linear(Z)
