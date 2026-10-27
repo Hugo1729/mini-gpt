@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
+import math
 
 class MLP(nn.Module):
     def __init__(self, n_embd, n_hidden):
@@ -112,19 +113,18 @@ class PositionalEncoding(nn.Module):
 
         for pos in range(block_sz):
             for i in range(n_embd):
+                freq = pos / (10000 ** (2 * (i // 2) / n_embd))
                 if (i%2 == 0):
-                    PE[pos][i] = torch.sin(pos/(10000**(i/n_embd)))
+                    PE[pos][i] = math.sin(freq)
                 else:
-                    PE[pos][i]= torch.cos(pos/(10000**((i-1)/n_embd)))
+                    PE[pos][i] = math.cos(freq)
 
-        self.register_buffer("PE", torch.tensor(PE, dtype=torch.float32))
+        self.register_buffer("PE", torch.tensor(PE, dtype=torch.float32).unsqueeze(0))
 
     def forward(self, X):
         batch_sz, seq_len, n_embd = X.size()
 
-        PE = self.PE[:seq_len,:]
-
-        return PE.view(1, seq_len, n_embd)
+        return self.PE[:, :seq_len,:]
 
 class GPT(nn.Module):
     def __init__(self, n_embd, n_heads, block_sz, n_hidden, epsilon, n_tokens, n_blocks):

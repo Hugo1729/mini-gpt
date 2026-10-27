@@ -21,10 +21,19 @@ class Block(nn.Module):
 
     def forward(self, x):
         y = self.layer_norm1(x)
+
+        seq_len = x.shape[1]
+
+        attn_mask = nn.Transformer.generate_square_subsequent_mask(
+            sz=seq_len, 
+            device=y.device, 
+            dtype=y.dtype
+        )
         attn_out, _ = self.mha(key=y,
                      query=y,
                      value=y,
-                     is_causal=True
+                     is_causal=True,
+                     attn_mask=attn_mask
         )
 
         x = x + attn_out
