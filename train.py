@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import random_split
 
 from pytorch_gpt import GPT
 
@@ -32,14 +33,25 @@ class TextDataset(Dataset):
 
         return x, y
 
-def train(embed_dim,
-    num_heads,
-    block_sz,
-    num_blocks,
-    batch_size,
-    learning_rate,
-    epochs,
-    input_file):
+def eval_loss(model, dataloader, device, criterion):
+    model.eval()
+
+    total_loss = 0
+
+    for batch_idx, (x, y) in enumerate(dataloader):
+        x, y = x.to(device), y.to(device)
+        logits = model(x)
+
+        loss = criterion(logits.view(-1, logits.size(-1)), y.view(-1))
+
+        total_loss += loss
+
+    model.train()
+
+    return total_loss / len(dataloader)
+
+def train(embed_dim, num_heads, block_sz, num_blocks, batch_size, learning_rate,
+          epochs, dataset, train_split=0.9, random_seed=42):
     
 
     device = torch.device("cuda" if torch.cuda.is_available() 
@@ -48,8 +60,13 @@ def train(embed_dim,
 
     print(f"Device: {device}")
 
-    dataset = TextDataset(input_file, block_sz)
-    dataloader = DataLoader(dataset, batch_size, shuffle=True, drop_last=True)
+    train_sz = len(dataset) * train_split
+    val_sz = len(dataset) * (1-train_split)
+
+    trainset, valset = random_split(dataset, [train_sz, val_sz], generator=torch.Generator().manual_seed(random_seed))
+
+    trainloader = DataLoader(trainset, batch_size, shuffle=True, drop_last=True)
+    valloader = DataLoader(valset, batch_size, shuffle=True, drop_last=True)
 
     model = GPT(embed_dim,
               dataset.vocab_size,
@@ -62,13 +79,15 @@ def train(embed_dim,
 
     model.train()
     print("Starting training loop")
-    print(f"Dataloader Length is {len(dataloader)}")
+    print(f"Training Dataloader Length is {len(trainloader)}")
+    print(f"Validation Dataloader Length is {len(valloader)}")
 
-    losses = []
+    train_losses = []
+    val_losses = []
 
     for epoch in range(epochs):
         total_loss = 0
-        for batch_idx, (x, y) in enumerate(dataloader):
+        for batch_idx, (x, y) in enumerate(trainloader):
             x, y = x.to(device), y.to(device)
 
             logits = model(x)
@@ -82,11 +101,13 @@ def train(embed_dim,
             total_loss += loss.item()
 
             if (batch_idx % 100 == 99):
-                print(f"Epoch {epoch+1}/{epochs} | batch {batch_idx+1}/{len(dataloader)} | loss {loss.item():.4f}")
+                print(f"Epoch {epoch+1}/{epochs} | batch {batch_idx+1}/{len(trainloader)} | loss {loss.item():.4f}")
 
-        avg_loss = total_loss / len(dataloader)
+        train_loss = total_loss / len(trainloader)
+        val_loss = eval_loss(model, valloader, device, criterion)
 
-        print(f"### Done with epoch {epoch+1}/{epochs} | Average Loss: {avg_loss:.4f} ###")
-        losses.append(avg_loss)
+        print(f"### Done with epoch {epoch+1}/{epochs} | Average Train Loss: {train_loss:.4f} | Average Val Loss: {val_loss:.4f} ###")
+        train_losses.append(train_loss)
+        val_losses.append(val_loss)
 
-    return model, losses
+    return model, train_losses, val_losses
