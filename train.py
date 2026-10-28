@@ -33,6 +33,7 @@ class TextDataset(Dataset):
 
         return x, y
 
+@torch.no_grad()
 def eval_loss(model, dataloader, device, criterion):
     model.eval()
 
@@ -44,7 +45,7 @@ def eval_loss(model, dataloader, device, criterion):
 
         loss = criterion(logits.view(-1, logits.size(-1)), y.view(-1))
 
-        total_loss += loss
+        total_loss += loss.item()
 
     model.train()
 
@@ -60,8 +61,8 @@ def train(embed_dim, num_heads, block_sz, num_blocks, batch_size, learning_rate,
 
     print(f"Device: {device}")
 
-    train_sz = len(dataset) * train_split
-    val_sz = len(dataset) * (1-train_split)
+    train_sz = int(len(dataset) * train_split)
+    val_sz = len(dataset) - train_sz
 
     trainset, valset = random_split(dataset, [train_sz, val_sz], generator=torch.Generator().manual_seed(random_seed))
 
